@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EasyMacro</title>
+  <meta name="description" content="EasyMacro is a simple macOS macro app for repeatable actions—steps, loops, and hands-free runs." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #08090c;
+      --text: #f0f4ff;
+      --muted: #7a8a9e;
+      --subtle: #1a1f2e;
+      --border: rgba(255,255,255,0.08);
+      --blue: #3b82f6;
+      --ad-bg: rgb(39, 43, 56);
+      --ad-width: 280px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: "Inter", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 40px;
+      background: rgba(8,9,12,0.7);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 15px;
+      letter-spacing: -0.2px;
+    }
+
+    .nav-dl {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      transition: color .15s;
+    }
+    .nav-dl:hover { color: var(--text); }
+
+    /* ── HERO — full width, no ad panels ── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 100px 24px 60px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-video {
+      position: absolute;
+      inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      opacity: 0.35;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(8,9,12,0.45) 0%, rgba(8,9,12,0.7) 100%);
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .hero > *:not(.hero-video) {
+      position: relative;
+      z-index: 2;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(59,130,246,0.1);
+      border: 1px solid rgba(59,130,246,0.25);
+      border-radius: 999px;
+      padding: 5px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #93c5fd;
+      letter-spacing: 0.3px;
+      margin-bottom: 28px;
+    }
+    .hero-badge .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #3b82f6;
+    }
+
+    .hero h1 {
+      font-size: clamp(40px, 7vw, 72px);
+      font-weight: 700;
+      letter-spacing: -2px;
+      line-height: 1.05;
+      margin-bottom: 20px;
+      max-width: 14ch;
+    }
+    .hero h1 span { color: var(--muted); }
+
+    .hero p {
+      font-size: 17px;
+      color: var(--muted);
+      max-width: 46ch;
+      margin-bottom: 44px;
+      font-weight: 400;
+      line-height: 1.7;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 14px 28px;
+      border-radius: 999px;
+      background: var(--blue);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+      border: none;
+      cursor: pointer;
+      transition: background .15s, transform .12s, box-shadow .15s;
+    }
+    .btn-pill:hover {
+      background: #2563eb;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(59,130,246,0.35);
+    }
+    .btn-pill:active { transform: translateY(0); }
+    .btn-pill svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+    .btn-scroll {
+      width: 50px; height: 50px;
+      border-radius: 50%;
+      border: 1px solid rgba(40,209,124,0.35);
+      background: rgba(40,209,124,0.12);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: background .15s, border-color .15s, transform .12s;
+      flex-shrink: 0;
+    }
+    .btn-scroll:hover {
+      background: rgba(40,209,124,0.2);
+      border-color: rgba(40,209,124,0.55);
+      transform: translateY(-1px);
+    }
+    .btn-scroll svg { width: 18px; height: 18px; stroke: #28d17c; }
+
+    .hero-meta {
+      margin-top: 24px;
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .hero-meta span { display: flex; align-items: center; gap: 5px; }
+    .hero-meta svg { width: 13px; height: 13px; stroke: var(--muted); }
+
+    /* ── BELOW-HERO: three-column with sticky ad panels ── */
+    .below-hero {
+      display: flex;
+      align-items: flex-start;
+    }
+
+    /* ── AD PANELS ── */
+    .ad-panel {
+      width: var(--ad-width);
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      background: var(--ad-bg);
+      overflow: hidden;
+      z-index: 50;
+    }
+
+    .ad-panel-left  { border-right: 1px solid rgba(255,255,255,0.07); }
+    .ad-panel-right { border-left:  1px solid rgba(255,255,255,0.07); }
+
+    .ad-label {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 10;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: rgba(255,255,255,0.4);
+      background: rgba(0,0,0,0.4);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px;
+      padding: 2px 6px;
+      line-height: 1.4;
+    }
+
+    .ad-link {
+      display: block;
+      width: 100%;
+    }
+
+    .ad-panel video {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* ── CENTER CONTENT ── */
+    .main-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* ── FEATURES ── */
+    #features {
+      padding: 100px 24px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      text-align: center;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    .section-title {
+      text-align: center;
+      font-size: clamp(26px, 4vw, 38px);
+      font-weight: 700;
+      letter-spacing: -1px;
+      margin-bottom: 56px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .feat {
+      background: var(--subtle);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px 24px;
+    }
+
+    .feat-icon {
+      width: 40px; height: 40px;
+      border-radius: 12px;
+      background: rgba(59,130,246,0.12);
+      border: 1px solid rgba(59,130,246,0.2);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 18px;
+    }
+    .feat-icon svg { width: 18px; height: 18px; stroke: #3b82f6; }
+
+    .feat h3 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 7px;
+      letter-spacing: -0.2px;
+    }
+    .feat p {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ── EXAMPLE ── */
+    #example {
+      padding: 0 24px 100px;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    .example-card {
+      background: var(--subtle);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 36px;
+    }
+
+    .example-card .section-label { text-align: left; margin-bottom: 20px; }
+
+    .steps {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+
+    .step-num {
+      width: 26px; height: 26px;
+      border-radius: 8px;
+      background: rgba(59,130,246,0.12);
+      border: 1px solid rgba(59,130,246,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: #3b82f6;
+      flex-shrink: 0;
+    }
+
+    .step span { font-size: 14px; font-weight: 500; color: var(--muted); }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 28px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 1100px) {
+      :root { --ad-width: 200px; }
+    }
+
+    @media (max-width: 860px) {
+      .ad-panel { display: none; }
+    }
+
+    @media (max-width: 700px) {
+      nav { padding: 16px 20px; }
+      .features-grid { grid-template-columns: 1fr; }
+      footer { flex-direction: column; gap: 12px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <div class="nav-logo">
+      <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.12);width:34px;height:34px;border-radius:10px;position:relative;overflow:hidden;flex-shrink:0;">
+        <span style="position:absolute;width:10px;height:10px;border-radius:50%;top:7px;left:7px;background:#2f7cf6;"></span>
+        <span style="position:absolute;width:10px;height:10px;border-radius:50%;right:7px;bottom:7px;background:#28d17c;"></span>
+      </div>
+      EasyMacro
+    </div>
+    <a class="nav-dl dl-btn" href="#">Download</a>
+  </nav>
+
+  <!-- HERO — full width, no ad panels -->
+  <section class="hero">
+    <video class="hero-video" src="hero.mp4" autoplay loop muted playsinline></video>
+    <div class="hero-badge"><span class="dot"></span> Free to download</div>
+
+    <h1>Automate the <span>boring</span> parts.</h1>
+
+    <p>Build simple step-based macros, loop them as many times as you need, and walk away. No scripting. No complexity.</p>
+
+    <div class="hero-actions">
+      <a class="btn-pill dl-btn dl-pill" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v13M5 13l7 7 7-7"/>
+          <path d="M3 20h18"/>
+        </svg>
+        Download for macOS
+      </a>
+      <button class="btn-scroll" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})" aria-label="Scroll down">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 9l6 6 6-6"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="hero-meta">
+      <span>
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><rect x="3" y="3" width="18" height="18" rx="4"/></svg>
+        No account needed
+      </span>
+      <span>
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span id="platform-label">macOS</span>
+      </span>
+      <span>
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        Setup in under a minute
+      </span>
+    </div>
+  </section>
+
+  <!-- BELOW HERO: ad panels flank features + example + footer -->
+  <div class="below-hero">
+
+    <!-- LEFT AD -->
+    <aside class="ad-panel ad-panel-left">
+      <span class="ad-label">AD</span>
+      <a class="ad-link" href="#" target="_blank" rel="noopener">
+        <video src="ad1.mp4" autoplay loop muted playsinline></video>
+      </a>
+    </aside>
+
+    <!-- CENTER -->
+    <div class="main-content">
+
+      <!-- FEATURES -->
+      <section id="features">
+        <p class="section-label">Features</p>
+        <h2 class="section-title">Everything you need, nothing you don't.</h2>
+        <div class="features-grid">
+          <div class="feat">
+            <div class="feat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+            </div>
+            <h3>Infinite loops</h3>
+            <p>Run your macro once, a set number of times, or on repeat until you say stop.</p>
+          </div>
+          <div class="feat">
+            <div class="feat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            </div>
+            <h3>Step-by-step tasks</h3>
+            <p>Build macros out of simple steps — clicks, keypresses, waits — in any order.</p>
+          </div>
+          <div class="feat">
+            <div class="feat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <h3>Hands-free runs</h3>
+            <p>Set it going and walk away. Great for repetitive workflows and AFK tasks.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- EXAMPLE -->
+      <section id="example">
+        <div class="example-card">
+          <p class="section-label">Example macro</p>
+          <ul class="steps">
+            <li class="step"><div class="step-num">1</div><span>Click center of screen</span></li>
+            <li class="step"><div class="step-num">2</div><span>Wait 300 seconds</span></li>
+            <li class="step"><div class="step-num">▶</div><span>Loop forever</span></li>
+          </ul>
+          <a class="btn-pill dl-btn" href="#" style="width:100%; justify-content:center;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px">
+              <path d="M12 3v13M5 13l7 7 7-7"/><path d="M3 20h18"/>
+            </svg>
+            Download for macOS
+          </a>
+        </div>
+      </section>
+
+      <!-- FOOTER -->
+      <footer>
+        <span>© <span id="y"></span> Superclass Labs LLC</span>
+        <a class="dl-btn" href="#" style="color:var(--muted); font-size:13px; transition:color .15s;" onmouseover="this.style.color='#f0f4ff'" onmouseout="this.style.color='var(--muted)'">Download</a>
+      </footer>
+
+    </div><!-- /main-content -->
+
+    <!-- RIGHT AD -->
+    <aside class="ad-panel ad-panel-right">
+      <span class="ad-label">AD</span>
+      <a class="ad-link" href="#" target="_blank" rel="noopener">
+        <video src="ad2.mp4" autoplay loop muted playsinline></video>
+      </a>
+    </aside>
+
+  </div><!-- /below-hero -->
+
+  <script>
+    document.getElementById("y").textContent = new Date().getFullYear();
+
+    const MAC_URL = "https://www.dropbox.com/scl/fi/inhxa8e62erlardn0n1c4/Easymacro.dmg?rlkey=x1svntmfaad1jz5c7nndus8jl&st=w1cst39o&dl=1";
+    const WIN_URL = MAC_URL;
+
+    const isWin = /Win/i.test(navigator.platform || navigator.userAgent);
+    const label = isWin ? "Download for Windows" : "Download for macOS";
+    const url = isWin ? WIN_URL : MAC_URL;
+
+    const pl = document.getElementById("platform-label");
+    if (pl) pl.textContent = isWin ? "Windows" : "macOS";
+
+    document.querySelectorAll(".dl-btn").forEach(el => { el.href = url; });
+    document.querySelectorAll(".dl-pill").forEach(el => {
+      el.childNodes.forEach(n => { if (n.nodeType === 3 && n.textContent.trim()) n.textContent = " " + label; });
+    });
+  </script>
+</body>
+</html>
