@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EasyMacro Analytics</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #0b0d12;
+      --panel: #151925;
+      --border: rgba(255,255,255,0.08);
+      --text: #eef2ff;
+      --muted: #8a94b8;
+      --blue: #3b82f6;
+      --green: #28d17c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      padding: 20px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    h1 { font-size: 18px; margin: 0; }
+    .range-select {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .range-select button {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 6px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .range-select button.active {
+      background: var(--blue);
+      color: #fff;
+      border-color: var(--blue);
+    }
+    main {
+      padding: 32px;
+      max-width: 1400px;
+      margin: auto;
+    }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .kpi {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+    }
+    .kpi-label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .kpi-value {
+      font-size: 26px;
+      font-weight: 700;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+    }
+    canvas { width: 100% !important; height: 300px !important; }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>EasyMacro Analytics</h1>
+  <div class="range-select" id="ranges">
+    <button data-hours="6">6h</button>
+    <button data-hours="12">12h</button>
+    <button data-hours="24" class="active">24h</button>
+    <button data-days="7">7d</button>
+    <button data-days="30">30d</button>
+  </div>
+</header>
+<main>
+  <section class="kpis">
+    <div class="kpi">
+      <div class="kpi-label">Total Downloads</div>
+      <div class="kpi-value" id="total">—</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">macOS</div>
+      <div class="kpi-value" id="macos">—</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Windows</div>
+      <div class="kpi-value" id="windows">—</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Top Browser</div>
+      <div class="kpi-value" id="browser">—</div>
+    </div>
+  </section>
+  <section class="grid">
+    <div class="card">
+      <h3>Downloads Over Time</h3>
+      <canvas id="downloadsChart"></canvas>
+    </div>
+    <div class="card">
+      <h3>Platform Split</h3>
+      <canvas id="platformChart"></canvas>
+    </div>
+  </section>
+</main>
+<script>
+  const SUPABASE_URL  = "https://fozsoakicinbnthdsaey.supabase.co";
+  const SUPABASE_ANON = "sb_publishable_72duJysxAx2p0mPg05ApiA_UEJxzJ6s";
+
+  const { createClient } = supabase;
+  const db = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+  let downloadsChart = null;
+  let platformChart = null;
+
+  function getSince(hours) {
+    const h = Number(hours) || 24;
+    return new Date(Date.now() - h * 3600000).toISOString();
+  }
+
+  async function fetchDownloads(since) {
+    const [macRes, winRes] = await Promise.all([
+      db.from('downloads_macos').select('created_at,browser').gte('created_at', since),
+      db.from('downloads_windows').select('created_at,browser').gte('created_at', since)
+    ]);
+
+    const macData = macRes.data || [];
+    const winData = winRes.data || [];
+
+    const macRows = macData.map(r => ({ ...r, platform: 'macos' }));
+    const winRows = winData.map(r => ({ ...r, platform: 'windows' }));
+
+    return [...macRows, ...winRows];
+  }
+
+  function groupByHour(rows) {
+    const map = {};
+    rows.forEach(r => {
+      if (!r.created_at) return;
+      const date = new Date(r.created_at);
+      if (isNaN(date)) return;
+      const key = date.getFullYear() + '-' +
+        String(date.getMonth()+1).padStart(2,'0') + '-' +
+        String(date.getDate()).padStart(2,'0') + ' ' +
+        String(date.getHours()).padStart(2,'0') + ':00';
+      map[key] = (map[key] || 0) + 1;
+    });
+    return Object.entries(map).sort((a,b)=> new Date(a[0]) - new Date(b[0]));
+  }
+
+  async function update(hours) {
+    try {
+      const since = getSince(hours);
+      const rows = await fetchDownloads(since);
+
+      const macos = rows.filter(r => r.platform === 'macos').length;
+      const windows = rows.filter(r => r.platform === 'windows').length;
+
+      document.getElementById('total').textContent = rows.length;
+      document.getElementById('macos').textContent = macos;
+      document.getElementById('windows').textContent = windows;
+
+      const browserCount = {};
+      rows.forEach(r => {
+        if (!r.browser) return;
+        browserCount[r.browser] = (browserCount[r.browser] || 0) + 1;
+      });
+      const topBrowser = Object.entries(browserCount).sort((a,b)=>b[1]-a[1])[0];
+      document.getElementById('browser').textContent = topBrowser ? topBrowser[0] : '—';
+
+      const grouped = groupByHour(rows);
+      const labels = grouped.map(x => x[0]);
+      const data = grouped.map(x => x[1]);
+
+      if (downloadsChart) downloadsChart.destroy();
+      if (platformChart) platformChart.destroy();
+
+      downloadsChart = new Chart(document.getElementById('downloadsChart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Downloads',
+            data,
+            tension: 0.3,
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59,130,246,0.1)',
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { ticks: { color: '#8a94b8' } },
+            y: { ticks: { color: '#8a94b8' }, beginAtZero: true }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+
+      platformChart = new Chart(document.getElementById('platformChart'), {
+        type: 'doughnut',
+        data: {
+          labels: ['macOS', 'Windows'],
+          datasets: [{
+            data: [macos, windows],
+            backgroundColor: ['#3b82f6', '#28d17c']
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#eef2ff' } } }
+        }
+      });
+    } catch (e) {
+      document.getElementById('total').textContent = 'Error';
+      document.getElementById('macos').textContent = '—';
+      document.getElementById('windows').textContent = '—';
+      document.getElementById('browser').textContent = '—';
+    }
+  }
+
+  document.querySelectorAll('#ranges button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#ranges button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const hours = btn.dataset.hours ? Number(btn.dataset.hours) : Number(btn.dataset.days) * 24;
+      update(hours);
+    });
+  });
+
+  update(24);
+</script>
+</body>
+</html>
