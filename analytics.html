@@ -152,16 +152,23 @@
   }
 
   async function fetchDownloads(since) {
-    const [macRes, winRes] = await Promise.all([
-      db.from('downloads_macos').select('created_at,browser').gte('created_at', since),
-      db.from('downloads_windows').select('created_at,browser').gte('created_at', since)
-    ]);
+    const macQuery = db
+      .from('downloads_macos')
+      .select('created_at,browser', { count: 'exact' })
+      .gte('created_at', since);
 
-    const macData = macRes.data || [];
-    const winData = winRes.data || [];
+    const winQuery = db
+      .from('downloads_windows')
+      .select('created_at,browser', { count: 'exact' })
+      .gte('created_at', since);
 
-    const macRows = macData.map(r => ({ ...r, platform: 'macos' }));
-    const winRows = winData.map(r => ({ ...r, platform: 'windows' }));
+    const [macRes, winRes] = await Promise.all([macQuery, winQuery]);
+
+    if (macRes.error) throw macRes.error;
+    if (winRes.error) throw winRes.error;
+
+    const macRows = (macRes.data || []).map(r => ({ ...r, platform: 'macos' }));
+    const winRows = (winRes.data || []).map(r => ({ ...r, platform: 'windows' }));
 
     return [...macRows, ...winRows];
   }
@@ -171,14 +178,14 @@
     rows.forEach(r => {
       if (!r.created_at) return;
       const date = new Date(r.created_at);
-      if (isNaN(date)) return;
+      if (isNaN(date.getTime())) return;
       const key = date.getFullYear() + '-' +
-        String(date.getMonth()+1).padStart(2,'0') + '-' +
-        String(date.getDate()).padStart(2,'0') + ' ' +
-        String(date.getHours()).padStart(2,'0') + ':00';
+        String(date.getMonth() + 1).padStart(2, '0') + '-' +
+        String(date.getDate()).padStart(2, '0') + ' ' +
+        String(date.getHours()).padStart(2, '0') + ':00';
       map[key] = (map[key] || 0) + 1;
     });
-    return Object.entries(map).sort((a,b)=> new Date(a[0]) - new Date(b[0]));
+    return Object.entries(map).sort((a, b) => new Date(a[0]) - new Date(b[0]));
   }
 
   async function update(hours) {
@@ -198,7 +205,7 @@
         if (!r.browser) return;
         browserCount[r.browser] = (browserCount[r.browser] || 0) + 1;
       });
-      const topBrowser = Object.entries(browserCount).sort((a,b)=>b[1]-a[1])[0];
+      const topBrowser = Object.entries(browserCount).sort((a, b) => b[1] - a[1])[0];
       document.getElementById('browser').textContent = topBrowser ? topBrowser[0] : '—';
 
       const grouped = groupByHour(rows);
@@ -213,7 +220,6 @@
         data: {
           labels,
           datasets: [{
-            label: 'Downloads',
             data,
             tension: 0.3,
             borderColor: '#3b82f6',
@@ -248,6 +254,7 @@
         }
       });
     } catch (e) {
+      console.error(e);
       document.getElementById('total').textContent = 'Error';
       document.getElementById('macos').textContent = '—';
       document.getElementById('windows').textContent = '—';
@@ -255,16 +262,20 @@
     }
   }
 
-  document.querySelectorAll('#ranges button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('#ranges button').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      const hours = btn.dataset.hours ? Number(btn.dataset.hours) : Number(btn.dataset.days) * 24;
-      update(hours);
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('#ranges button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#ranges button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const hours = btn.dataset.hours
+          ? Number(btn.dataset.hours)
+          : Number(btn.dataset.days) * 24;
+        update(hours);
+      });
     });
-  });
 
-  update(24);
+    update(24);
+  });
 </script>
 </body>
 </html>
