@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -65,7 +66,7 @@
     }
     .nav-dl:hover { color: var(--text); }
 
-    /* ── HERO — full width, no ad panels ── */
+    /* ── HERO ── */
     .hero {
       min-height: 100vh;
       display: flex;
@@ -198,7 +199,7 @@
     .hero-meta span { display: flex; align-items: center; gap: 5px; }
     .hero-meta svg { width: 13px; height: 13px; stroke: var(--muted); }
 
-    /* ── BELOW-HERO: three-column with sticky ad panels ── */
+    /* ── BELOW-HERO ── */
     .below-hero {
       display: flex;
       align-items: flex-start;
@@ -239,10 +240,9 @@
     }
 
     .ad-link {
-      display: block;
+      display: flex;
       width: 100%;
       height: 100%;
-      display: flex;
       align-items: center;
       justify-content: center;
     }
@@ -408,7 +408,7 @@
     <a class="nav-dl dl-btn" href="#">Download</a>
   </nav>
 
-  <!-- HERO — full width, no ad panels -->
+  <!-- HERO -->
   <section class="hero">
     <video class="hero-video" src="hero.mp4" autoplay loop muted playsinline></video>
     <div class="hero-badge"><span class="dot"></span> Free to download</div>
@@ -448,7 +448,7 @@
     </div>
   </section>
 
-  <!-- BELOW HERO: ad panels flank features + example + footer -->
+  <!-- BELOW HERO -->
   <div class="below-hero">
 
     <!-- LEFT AD -->
@@ -528,21 +528,86 @@
   </div><!-- /below-hero -->
 
   <script>
-    document.getElementById("y").textContent = new Date().getFullYear();
+    // ── SUPABASE CONFIG ────────────────────────────────────────────────────────
+    // Replace these two values with your actual Supabase project credentials.
+    // Find them at: https://supabase.com/dashboard → your project → Settings → API
+    const SUPABASE_URL  = "https://fozsoakicinbnthdsaey.supabase.co"; // ← replace
+    const SUPABASE_ANON = "sb_publishable_72duJysxAx2p0mPg05ApiA_UEJxzJ6s";
 
     const MAC_URL = "https://www.dropbox.com/scl/fi/inhxa8e62erlardn0n1c4/Easymacro.dmg?rlkey=x1svntmfaad1jz5c7nndus8jl&st=w1cst39o&dl=1";
-    const WIN_URL = MAC_URL;
+    const WIN_URL = MAC_URL; // ← replace with a real Windows build URL when ready
 
-    const isWin = /Win/i.test(navigator.platform || navigator.userAgent);
-    const label = isWin ? "Download for Windows" : "Download for macOS";
-    const url = isWin ? WIN_URL : MAC_URL;
+    // ── SUPABASE CLIENT ────────────────────────────────────────────────────────
+    const { createClient } = supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+    // ── HELPERS ────────────────────────────────────────────────────────────────
+    function getBrowser(ua) {
+      if (/Edg\//i.test(ua))     return "Edge";
+      if (/OPR\//i.test(ua))     return "Opera";
+      if (/Chrome\//i.test(ua))  return "Chrome";
+      if (/Firefox\//i.test(ua)) return "Firefox";
+      if (/Safari\//i.test(ua))  return "Safari";
+      return "Unknown";
+    }
+
+    function getOSVersion(ua) {
+      // macOS e.g. "Mac OS X 10_15_7" → "macOS 10.15.7"
+      let m = ua.match(/Mac OS X ([\d_]+)/);
+      if (m) return "macOS " + m[1].replace(/_/g, ".");
+      // Windows e.g. "Windows NT 10.0" → "Windows 10.0"
+      m = ua.match(/Windows NT ([\d.]+)/);
+      if (m) return "Windows NT " + m[1];
+      return "Unknown";
+    }
+
+    function getUTMParam(name) {
+      return new URLSearchParams(window.location.search).get(name) || null;
+    }
+
+    async function logDownload(platform) {
+      const ua    = navigator.userAgent;
+      const table = platform === "windows" ? "downloads_windows" : "downloads_macos";
+      const payload = {
+        browser:      getBrowser(ua),
+        os_version:   getOSVersion(ua),
+        utm_source:   getUTMParam("utm_source"),
+        utm_medium:   getUTMParam("utm_medium"),
+        utm_campaign: getUTMParam("utm_campaign"),
+        user_agent:   ua,
+      };
+      try {
+        const { error } = await db.from(table).insert(payload);
+        if (error) console.warn("Download log error:", error.message);
+      } catch (e) {
+        console.warn("Supabase unreachable:", e.message);
+      }
+    }
+
+    // ── PLATFORM DETECTION ─────────────────────────────────────────────────────
+    document.getElementById("y").textContent = new Date().getFullYear();
+
+    const isWin    = /Win/i.test(navigator.platform || navigator.userAgent);
+    const platform = isWin ? "windows" : "macos";
+    const label    = isWin ? "Download for Windows" : "Download for macOS";
+    const url      = isWin ? WIN_URL : MAC_URL;
 
     const pl = document.getElementById("platform-label");
     if (pl) pl.textContent = isWin ? "Windows" : "macOS";
 
+    // Set all download hrefs
     document.querySelectorAll(".dl-btn").forEach(el => { el.href = url; });
+
+    // Update button label text nodes
     document.querySelectorAll(".dl-pill").forEach(el => {
-      el.childNodes.forEach(n => { if (n.nodeType === 3 && n.textContent.trim()) n.textContent = " " + label; });
+      el.childNodes.forEach(n => {
+        if (n.nodeType === 3 && n.textContent.trim()) n.textContent = " " + label;
+      });
+    });
+
+    // Log every download click (fires before navigation)
+    document.querySelectorAll(".dl-btn").forEach(el => {
+      el.addEventListener("click", () => logDownload(platform));
     });
   </script>
 </body>
