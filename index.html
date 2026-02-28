@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EasyMacro</title>
-  <meta name="description" content="EasyMacro is a simple macOS macro app for repeatable actions—steps, loops, and hands-free runs." />
+  <meta name="description" content="EasyMacro is a simple desktop macro app for repeatable actions—steps, loops, and hands-free runs." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -409,7 +409,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
         </div>
         <h3>Step-by-step tasks</h3>
-        <p>Build macros out of simple steps — clicks, keypresses, waits — in any order.</p>
+        <p>Build macros out of simple steps — in any order.</p>
       </div>
       <div class="feat">
         <div class="feat-icon">
@@ -448,8 +448,8 @@
   <script>
     document.getElementById("y").textContent = new Date().getFullYear();
 
-    const MAC_URL = "https://www.dropbox.com/scl/fi/inhxa8e62erlardn0n1c4/Easymacro.dmg?rlkey=x1svntmfaad1jz5c7nndus8jl&st=w1cst39o&dl=1";
-    const WIN_URL = MAC_URL; // swap in Windows link when ready
+    const MAC_URL = "https://github.com/SuperclassLabs/easymacro/releases/download/1.0.1/easymacro.dmg";
+    const WIN_URL = "https://github.com/SuperclassLabs/easymacro/releases/download/1.0.1/easymacro.Setup.0.1.0.exe"; // swap in Windows link when ready
 
     const isWin = /Win/i.test(navigator.platform || navigator.userAgent);
     const label = isWin ? "Download for Windows" : "Download for macOS";
