@@ -512,7 +512,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px">
               <path d="M12 3v13M5 13l7 7 7-7"/><path d="M3 20h18"/>
             </svg>
-            Download for macOS
+            <span class="dl-btn-label">Download for macOS</span>
           </a>
         </div>
       </section>
@@ -594,6 +594,9 @@
 
     const pl = document.getElementById("platform-label");
     if (pl) pl.textContent = isWin ? "Windows" : "macOS";
+
+    // Update the download button label in the example card
+    document.querySelectorAll(".dl-btn-label").forEach(el => { el.textContent = label; });
 
     // Only the actual download buttons get the real URL
     document.querySelectorAll(".dl-btn").forEach(el => { el.href = url; });
